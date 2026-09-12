@@ -1,0 +1,48 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import configuration from './config/configuration';
+import { envValidationSchema } from './config/env.validation';
+import { PrismaModule } from './prisma/prisma.module';
+import { AuditModule } from './audit/audit.module';
+import { MailModule } from './mail/mail.module';
+import { TenantModule } from './tenant/tenant.module';
+import { AuthModule } from './auth/auth.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [configuration],
+      validationSchema: envValidationSchema,
+      validationOptions: { abortEarly: false },
+    }),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [
+          {
+            ttl: config.get<number>('throttle.ttlSeconds')! * 1000,
+            limit: config.get<number>('throttle.limit')!,
+          },
+        ],
+      }),
+    }),
+    PrismaModule,
+    AuditModule,
+    MailModule,
+    TenantModule,
+    AuthModule,
+  ],
+  controllers: [AppController],
+  providers: [
+    AppService,
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
+})
+export class AppModule {}
