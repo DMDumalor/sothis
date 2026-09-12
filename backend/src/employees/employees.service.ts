@@ -89,8 +89,22 @@ export class EmployeesService {
   }
 
   async findOne(tenantId: string, id: string, restriction?: EmployeeScopeRestriction) {
+    // IMPORTANT: `id` is already fixed to the requested record here, so an
+    // OWN-scope restriction must be checked as an equality guard rather
+    // than spread into the where clause — spreading `{ id: onlyEmployeeId }`
+    // after `id` would silently override the caller-requested id instead
+    // of rejecting a mismatch, which would let a self-service employee
+    // fetch (or, via callers like employee-documents, act on) ANY employee
+    // record by id as long as their own employee record exists.
+    if (restriction?.onlyEmployeeId && restriction.onlyEmployeeId !== id) {
+      throw new NotFoundException('Employee not found');
+    }
     const employee = await this.prisma.employee.findFirst({
-      where: { id, tenantId, ...this.buildScopeWhere(restriction) },
+      where: {
+        id,
+        tenantId,
+        ...(restriction?.departmentId ? { departmentId: restriction.departmentId } : {}),
+      },
       include: {
         department: { select: { id: true, name: true } },
         position: { select: { id: true, title: true } },
