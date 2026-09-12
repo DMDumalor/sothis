@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment / secrets — NEVER commit real values (spec section 51/52)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build output
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Prisma
+backend/prisma/migrations/dev.db
+backend/generated/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+
+# Testing
+.nyc_output/
+
+# Vite
+frontend/dist/
+frontend/.vite/
