@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PermissionScope } from '@prisma/client';
-import { EmployeesService, EmployeeScopeRestriction } from './employees.service';
+import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { QueryEmployeesDto } from './dto/query-employees.dto';
@@ -24,20 +24,6 @@ export class EmployeesController {
     private readonly scopeService: ScopeService,
   ) {}
 
-  private async resolveRestriction(
-    user: AuthenticatedPrincipal,
-    scope?: PermissionScope,
-  ): Promise<EmployeeScopeRestriction | undefined> {
-    if (scope === PermissionScope.OWN) {
-      return { onlyEmployeeId: user.employeeId ?? '__none__' };
-    }
-    if (scope === PermissionScope.DEPARTMENT) {
-      const departmentId = await this.scopeService.getOwnDepartmentId(user.employeeId);
-      return departmentId ? { departmentId } : { onlyEmployeeId: '__none__' };
-    }
-    return undefined;
-  }
-
   @Get()
   @RequirePermissions(PERMISSIONS.EMPLOYEE_READ)
   @ApiOperation({ summary: 'List employees (scoped by role: tenant / department / self)' })
@@ -46,7 +32,7 @@ export class EmployeesController {
     @CurrentUser() user: AuthenticatedPrincipal,
     @GrantedScope() scope?: PermissionScope,
   ) {
-    const restriction = await this.resolveRestriction(user, scope);
+    const restriction = await this.scopeService.resolveScopeRestriction(user, scope);
     return this.employeesService.list(user.tenantId, query, restriction);
   }
 
@@ -57,7 +43,7 @@ export class EmployeesController {
     @CurrentUser() user: AuthenticatedPrincipal,
     @GrantedScope() scope?: PermissionScope,
   ) {
-    const restriction = await this.resolveRestriction(user, scope);
+    const restriction = await this.scopeService.resolveScopeRestriction(user, scope);
     return this.employeesService.findOne(user.tenantId, id, restriction);
   }
 
@@ -77,7 +63,7 @@ export class EmployeesController {
     @CurrentUser() user: AuthenticatedPrincipal,
     @GrantedScope() scope?: PermissionScope,
   ) {
-    const restriction = await this.resolveRestriction(user, scope);
+    const restriction = await this.scopeService.resolveScopeRestriction(user, scope);
     return this.employeesService.update({
       tenantId: user.tenantId,
       id,

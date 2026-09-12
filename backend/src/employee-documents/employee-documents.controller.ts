@@ -29,7 +29,6 @@ import { GrantedScope } from '../common/decorators/granted-scope.decorator';
 import { PERMISSIONS } from '../rbac/permissions.constants';
 import { ScopeService } from '../rbac/scope.service';
 import { AuthenticatedPrincipal } from '../common/interfaces/authenticated-request.interface';
-import { EmployeeScopeRestriction } from '../employees/employees.service';
 
 /**
  * Multer stays on memory storage with tight limits (single file, small
@@ -57,20 +56,6 @@ export class EmployeeDocumentsController {
     private readonly scopeService: ScopeService,
   ) {}
 
-  private async resolveRestriction(
-    user: AuthenticatedPrincipal,
-    scope?: PermissionScope,
-  ): Promise<EmployeeScopeRestriction | undefined> {
-    if (scope === PermissionScope.OWN) {
-      return { onlyEmployeeId: user.employeeId ?? '__none__' };
-    }
-    if (scope === PermissionScope.DEPARTMENT) {
-      const departmentId = await this.scopeService.getOwnDepartmentId(user.employeeId);
-      return departmentId ? { departmentId } : { onlyEmployeeId: '__none__' };
-    }
-    return undefined;
-  }
-
   @Get()
   @RequirePermissions(PERMISSIONS.EMPLOYEE_DOCUMENT_READ)
   @ApiOperation({ summary: 'List documents for an employee' })
@@ -79,7 +64,7 @@ export class EmployeeDocumentsController {
     @CurrentUser() user: AuthenticatedPrincipal,
     @GrantedScope() scope?: PermissionScope,
   ) {
-    const restriction = await this.resolveRestriction(user, scope);
+    const restriction = await this.scopeService.resolveScopeRestriction(user, scope);
     return this.documentsService.list(user.tenantId, employeeId, restriction);
   }
 
@@ -97,7 +82,7 @@ export class EmployeeDocumentsController {
     @CurrentUser() user: AuthenticatedPrincipal,
     @GrantedScope() scope?: PermissionScope,
   ) {
-    const restriction = await this.resolveRestriction(user, scope);
+    const restriction = await this.scopeService.resolveScopeRestriction(user, scope);
     return this.documentsService.upload({
       tenantId: user.tenantId,
       employeeId,
@@ -118,7 +103,7 @@ export class EmployeeDocumentsController {
     @Res({ passthrough: true }) res: Response,
     @GrantedScope() scope?: PermissionScope,
   ): Promise<StreamableFile> {
-    const restriction = await this.resolveRestriction(user, scope);
+    const restriction = await this.scopeService.resolveScopeRestriction(user, scope);
     const { document, absolutePath } = await this.documentsService.getForDownload(
       user.tenantId,
       employeeId,
@@ -142,7 +127,7 @@ export class EmployeeDocumentsController {
     @CurrentUser() user: AuthenticatedPrincipal,
     @GrantedScope() scope?: PermissionScope,
   ) {
-    const restriction = await this.resolveRestriction(user, scope);
+    const restriction = await this.scopeService.resolveScopeRestriction(user, scope);
     await this.documentsService.softDelete({
       tenantId: user.tenantId,
       employeeId,

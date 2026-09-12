@@ -45,6 +45,7 @@ export const PERMISSIONS = {
   OVERTIME_READ: 'overtime.read',
   OVERTIME_CREATE: 'overtime.create',
   OVERTIME_APPROVE: 'overtime.approve',
+  OVERTIME_REJECT: 'overtime.reject',
 
   // Payroll / finance
   PAYROLL_READ: 'payroll.read',
@@ -113,6 +114,7 @@ export const PERMISSION_CATALOG: Array<{
   { code: PERMISSIONS.OVERTIME_READ, module: 'attendance', description: 'View overtime records' },
   { code: PERMISSIONS.OVERTIME_CREATE, module: 'attendance', description: 'Submit overtime' },
   { code: PERMISSIONS.OVERTIME_APPROVE, module: 'attendance', description: 'Approve overtime' },
+  { code: PERMISSIONS.OVERTIME_REJECT, module: 'attendance', description: 'Reject overtime' },
 
   { code: PERMISSIONS.PAYROLL_READ, module: 'payroll', description: 'View payroll data' },
   { code: PERMISSIONS.PAYROLL_PROCESS, module: 'payroll', description: 'Run payroll calculations' },

@@ -2,16 +2,18 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { EmployeeOwnedScopeRestriction } from '../rbac/scope.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { QueryEmployeesDto } from './dto/query-employees.dto';
 
-export interface EmployeeScopeRestriction {
-  /** Department Head grant: only employees in this department. */
-  departmentId?: string;
-  /** Employee (self-service) grant: only this one employee record. */
-  onlyEmployeeId?: string;
-}
+/**
+ * Re-exported for backwards compatibility with existing imports in this
+ * module — the canonical definition now lives in ScopeService alongside
+ * the resolver that produces it, so every module shares one type instead
+ * of each defining its own (identical, but easy to let drift) shape.
+ */
+export type EmployeeScopeRestriction = EmployeeOwnedScopeRestriction;
 
 const EMPLOYEE_LIST_SELECT = {
   id: true,
