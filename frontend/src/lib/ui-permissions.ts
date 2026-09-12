@@ -49,3 +49,19 @@ export function canClockAttendance(roles: RoleCode[]): boolean {
 export function canSubmitOvertime(roles: RoleCode[]): boolean {
   return roles.includes('EMPLOYEE');
 }
+
+export function canManageCompensation(roles: RoleCode[]): boolean {
+  return roles.includes('FINANCE');
+}
+
+export function canProcessPayroll(roles: RoleCode[]): boolean {
+  return roles.includes('FINANCE');
+}
+
+export function canReviewPayroll(roles: RoleCode[]): boolean {
+  return roles.includes('FINANCE');
+}
+
+export function canApprovePayroll(roles: RoleCode[]): boolean {
+  return roles.includes('FINANCE');
+}

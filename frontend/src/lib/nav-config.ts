@@ -98,6 +98,10 @@ export function getNavSections(primaryRole: RoleCode): NavSection[] {
             { label: 'Financial Reports', to: '/reports', icon: BarChart3 },
           ],
         },
+        {
+          label: 'People',
+          items: [{ label: 'Employees', to: '/employees', icon: Users }],
+        },
         { label: 'Insights', items: [{ label: 'Smart Insights', to: '/intelligence', icon: Sparkles }] },
         { label: 'System', items: [
           { label: 'Security', to: '/security', icon: ShieldAlert },

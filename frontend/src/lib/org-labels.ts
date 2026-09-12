@@ -1,5 +1,6 @@
 import type { DocumentType, EmploymentStatus, EmploymentType, Gender } from '@/types/org';
 import type { AttendanceStatus, LeaveRequestStatus, OvertimeStatus } from '@/types/time';
+import type { PaymentMethod, PaymentStatus, PayrollStatus } from '@/types/payroll';
 
 export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   FULL_TIME: 'Full-time',
@@ -77,4 +78,41 @@ export const OVERTIME_STATUS_TONE: Record<OvertimeStatus, 'success' | 'warning' 
   APPROVED: 'success',
   REJECTED: 'error',
   PAID: 'info',
+};
+
+export const PAYROLL_STATUS_LABELS: Record<PayrollStatus, string> = {
+  DRAFT: 'Draft',
+  CALCULATED: 'Calculated',
+  UNDER_REVIEW: 'Under review',
+  APPROVED: 'Approved',
+  PAID: 'Paid',
+  CANCELLED: 'Cancelled',
+};
+
+export const PAYROLL_STATUS_TONE: Record<PayrollStatus, 'success' | 'warning' | 'error' | 'info' | 'neutral'> = {
+  DRAFT: 'neutral',
+  CALCULATED: 'info',
+  UNDER_REVIEW: 'warning',
+  APPROVED: 'success',
+  PAID: 'success',
+  CANCELLED: 'error',
+};
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  BANK_TRANSFER: 'Bank transfer',
+  CASH: 'Cash',
+  CHEQUE: 'Cheque',
+  MOBILE_MONEY: 'Mobile money',
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  PENDING: 'Pending',
+  COMPLETED: 'Completed',
+  FAILED: 'Failed',
+};
+
+export const PAYMENT_STATUS_TONE: Record<PaymentStatus, 'success' | 'warning' | 'error' | 'neutral'> = {
+  PENDING: 'warning',
+  COMPLETED: 'success',
+  FAILED: 'error',
 };

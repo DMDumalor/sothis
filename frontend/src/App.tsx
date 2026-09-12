@@ -13,6 +13,10 @@ import { PositionsPage } from '@/pages/positions/PositionsPage';
 import { LeavePage } from '@/pages/leave/LeavePage';
 import { AttendancePage } from '@/pages/attendance/AttendancePage';
 import { OvertimePage } from '@/pages/overtime/OvertimePage';
+import { PayrollPage } from '@/pages/payroll/PayrollPage';
+import { PayrollPeriodDetailPage } from '@/pages/payroll/PayrollPeriodDetailPage';
+import { PaymentsPage } from '@/pages/payroll/PaymentsPage';
+import { PayslipsPage } from '@/pages/payroll/PayslipsPage';
 
 function App() {
   useBootstrapAuth();
@@ -48,7 +52,19 @@ function App() {
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/overtime" element={<OvertimePage />} />
 
-            {/* Remaining feature routes (payroll, reports, ...) are added
+            {/* Finance (M4): PAYROLL_READ (Finance/DG) gates the list and
+                detail pages server-side; PAYROLL_PROCESS/REVIEW/APPROVE
+                further gate the mutating actions rendered inside them.
+                PAYSLIP_READ is OWN-scoped for Employee and TENANT-scoped
+                for Finance, so PayslipsPage renders differently per role
+                but the backend is what actually enforces the boundary. */}
+            <Route path="/payroll" element={<PayrollPage />} />
+            <Route path="/payroll/:id" element={<PayrollPeriodDetailPage />} />
+            <Route path="/payments" element={<PaymentsPage />} />
+            <Route path="/payslips" element={<PayslipsPage />} />
+
+            {/* Remaining feature routes (reports, DG dashboard, intelligence,
+                security center, ...) are added
                 milestone by milestone per the architecture plan, each as a
                 full vertical slice rather than an empty page. */}
           </Route>

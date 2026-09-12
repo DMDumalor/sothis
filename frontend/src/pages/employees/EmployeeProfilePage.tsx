@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Tabs } from '@/components/ui/Tabs';
 import { useAuthStore } from '@/stores/auth-store';
 import { employeesApi } from '@/lib/employees-api';
-import { canManageEmployees } from '@/lib/ui-permissions';
+import { canManageCompensation, canManageEmployees } from '@/lib/ui-permissions';
 import {
   EMPLOYMENT_STATUS_LABELS,
   EMPLOYMENT_STATUS_TONE,
@@ -16,14 +16,16 @@ import {
 } from '@/lib/org-labels';
 import { EmployeeFormModal } from './EmployeeFormModal';
 import { EmployeeDocumentsPanel } from './EmployeeDocumentsPanel';
+import { CompensationPanel } from './CompensationPanel';
 
-type TabKey = 'overview' | 'contact' | 'emergency' | 'documents';
+type TabKey = 'overview' | 'contact' | 'emergency' | 'documents' | 'compensation';
 
 export function EmployeeProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const roles = useAuthStore((s) => s.user?.roles ?? []);
   const canManage = canManageEmployees(roles);
+  const canSeeCompensation = canManageCompensation(roles);
   const [tab, setTab] = useState<TabKey>('overview');
   const [showEdit, setShowEdit] = useState(false);
 
@@ -103,6 +105,7 @@ export function EmployeeProfilePage() {
           { key: 'contact', label: 'Contact' },
           { key: 'emergency', label: 'Emergency contacts', count: employee.emergencyContacts.length },
           { key: 'documents', label: 'Documents' },
+          ...(canSeeCompensation ? [{ key: 'compensation', label: 'Compensation' }] : []),
         ]}
         active={tab}
         onChange={(key) => setTab(key as TabKey)}
@@ -167,6 +170,8 @@ export function EmployeeProfilePage() {
         )}
 
         {tab === 'documents' && <EmployeeDocumentsPanel employeeId={employee.id} />}
+
+        {tab === 'compensation' && canSeeCompensation && <CompensationPanel employeeId={employee.id} />}
       </div>
 
       <EmployeeFormModal open={showEdit} onClose={() => setShowEdit(false)} employee={employee} />
