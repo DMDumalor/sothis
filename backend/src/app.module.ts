@@ -9,6 +9,10 @@ import { AuditModule } from './audit/audit.module';
 import { MailModule } from './mail/mail.module';
 import { TenantModule } from './tenant/tenant.module';
 import { AuthModule } from './auth/auth.module';
+import { RbacModule } from './rbac/rbac.module';
+import { DepartmentsModule } from './departments/departments.module';
+import { PositionsModule } from './positions/positions.module';
+import { EmployeesModule } from './employees/employees.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -37,6 +41,10 @@ import { AppService } from './app.service';
     MailModule,
     TenantModule,
     AuthModule,
+    RbacModule,
+    DepartmentsModule,
+    PositionsModule,
+    EmployeesModule,
   ],
   controllers: [AppController],
   providers: [
