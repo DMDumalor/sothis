@@ -1,0 +1,50 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter' theme(--font-sans);
+
+@theme {
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* SOTHIS 1618 brand palette (spec section 31) */
+  --color-brand-primary: #2563eb;
+  --color-brand-primary-hover: #1d4ed8;
+  --color-brand-secondary: #6366f1;
+  --color-brand-success: #10b981;
+  --color-brand-warning: #f59e0b;
+  --color-brand-error: #ef4444;
+  --color-brand-navy: #0f172a;
+  --color-brand-navy-light: #1e293b;
+  --color-brand-dark: #1e293b;
+  --color-brand-gray: #64748b;
+  --color-brand-light: #e2e8f0;
+  --color-brand-bg: #f8fafc;
+  --color-brand-surface: #ffffff;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-brand-bg text-slate-800 antialiased;
+    font-feature-settings:
+      'cv02',
+      'cv03',
+      'cv04',
+      'cv11';
+  }
+
+  #root {
+    min-height: 100svh;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
