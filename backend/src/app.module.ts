@@ -18,6 +18,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { LeaveModule } from './leave/leave.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { OvertimeModule } from './overtime/overtime.module';
+import { CompensationModule } from './compensation/compensation.module';
+import { PayrollModule } from './payroll/payroll.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -55,6 +57,8 @@ import { AppService } from './app.service';
     LeaveModule,
     AttendanceModule,
     OvertimeModule,
+    CompensationModule,
+    PayrollModule,
   ],
   controllers: [AppController],
   providers: [
