@@ -11,6 +11,7 @@
  *
  * Run with: npm run prisma:seed  (see package.json)
  */
+import 'dotenv/config';
 import { PrismaClient, RoleCode, DocumentType, EmploymentType } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
