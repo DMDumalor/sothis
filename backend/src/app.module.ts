@@ -13,6 +13,7 @@ import { RbacModule } from './rbac/rbac.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { PositionsModule } from './positions/positions.module';
 import { EmployeesModule } from './employees/employees.module';
+import { EmployeeDocumentsModule } from './employee-documents/employee-documents.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -45,6 +46,7 @@ import { AppService } from './app.service';
     DepartmentsModule,
     PositionsModule,
     EmployeesModule,
+    EmployeeDocumentsModule,
   ],
   controllers: [AppController],
   providers: [

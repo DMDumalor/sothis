@@ -36,3 +36,6 @@ logs/
 # Vite
 frontend/dist/
 frontend/.vite/
+
+# Uploaded employee documents (never committed — real files land here at runtime)
+backend/uploads/

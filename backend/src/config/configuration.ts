@@ -40,4 +40,16 @@ export default () => ({
     limit: parseInt(process.env.THROTTLE_LIMIT ?? '100', 10),
     loginLimit: parseInt(process.env.LOGIN_THROTTLE_LIMIT ?? '10', 10),
   },
+
+  uploads: {
+    // Absolute or process-relative directory where uploaded employee
+    // documents are stored. Never served as static files — always
+    // streamed through an authorized, scope-checked controller route
+    // (spec section 46: no predictable public URLs).
+    directory: process.env.UPLOADS_DIR ?? 'uploads/employee-documents',
+    maxFileSizeBytes: parseInt(
+      process.env.UPLOAD_MAX_FILE_SIZE_BYTES ?? `${10 * 1024 * 1024}`, // 10MB
+      10,
+    ),
+  },
 });

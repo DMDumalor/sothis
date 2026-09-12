@@ -31,4 +31,7 @@ export const envValidationSchema = Joi.object({
   THROTTLE_TTL_SECONDS: Joi.number().default(60),
   THROTTLE_LIMIT: Joi.number().default(100),
   LOGIN_THROTTLE_LIMIT: Joi.number().default(10),
+
+  UPLOADS_DIR: Joi.string().default('uploads/employee-documents'),
+  UPLOAD_MAX_FILE_SIZE_BYTES: Joi.number().default(10 * 1024 * 1024),
 });
