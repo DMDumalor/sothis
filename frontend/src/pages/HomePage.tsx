@@ -4,6 +4,7 @@ import { CheckCircle2, ShieldCheck, Building2, KeyRound } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { authApi } from '@/lib/auth-api';
 import { ROLE_LABELS } from '@/lib/nav-config';
+import { RoleDashboard } from '@/components/dashboard/RoleDashboard';
 
 export function HomePage() {
   const user = useAuthStore((s) => s.user);
@@ -12,12 +13,13 @@ export function HomePage() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const firstName = me?.employee?.firstName ?? user?.email.split('@')[0] ?? '';
+  const primaryRole = me?.roles?.[0] ?? user?.roles[0];
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">
-          {greeting}, {firstName}
+          {primaryRole === 'DG' ? 'Executive overview' : `${greeting}, ${firstName}`}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
           {new Date().toLocaleDateString(undefined, {
@@ -29,17 +31,7 @@ export function HomePage() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-5">
-        <p className="text-sm font-medium text-blue-900">
-          Foundation milestone (M1) is live: authentication, RBAC, tenant isolation and audit
-          logging are wired end-to-end against a real database.
-        </p>
-        <p className="mt-1 text-sm text-blue-800">
-          Role-specific dashboards, KPI cards and charts for {user ? ROLE_LABELS[user.roles[0]] : 'your role'} land in the
-          next milestones (People, Time, Money, Insight) — this page intentionally shows only
-          what is real right now rather than placeholder numbers.
-        </p>
-      </div>
+      {primaryRole && <RoleDashboard primaryRole={primaryRole} />}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <InfoCard

@@ -17,6 +17,9 @@ import { PayrollPage } from '@/pages/payroll/PayrollPage';
 import { PayrollPeriodDetailPage } from '@/pages/payroll/PayrollPeriodDetailPage';
 import { PaymentsPage } from '@/pages/payroll/PaymentsPage';
 import { PayslipsPage } from '@/pages/payroll/PayslipsPage';
+import { ReportsPage } from '@/pages/reports/ReportsPage';
+import { SecurityCenterPage } from '@/pages/security/SecurityCenterPage';
+import { IntelligencePage } from '@/pages/intelligence/IntelligencePage';
 
 function App() {
   useBootstrapAuth();
@@ -63,10 +66,22 @@ function App() {
             <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/payslips" element={<PayslipsPage />} />
 
-            {/* Remaining feature routes (reports, DG dashboard, intelligence,
-                security center, ...) are added
-                milestone by milestone per the architecture plan, each as a
-                full vertical slice rather than an empty page. */}
+            {/* Insight & security (M5): REPORT_READ (TENANT for
+                ADMIN/HR/FINANCE/DG, DEPARTMENT for Department Head) gates
+                reports server-side; SMART_INSIGHT_READ/REVIEW gate the
+                intelligence engine's list/review actions; SECURITY_READ/
+                AUDIT_READ (ADMIN/DG only) gate the security center. Every
+                page renders differently by role but the backend — not
+                nav-config — is what actually enforces each boundary. */}
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/intelligence" element={<IntelligencePage />} />
+            <Route path="/security" element={<SecurityCenterPage />} />
+
+            {/* Remaining feature routes (DG-specific executive dashboard
+                widgets beyond HomePage, admin console for Users/Roles/
+                Organization) are added milestone by milestone per the
+                architecture plan, each as a full vertical slice rather
+                than an empty page. */}
           </Route>
         </Route>
       </Routes>

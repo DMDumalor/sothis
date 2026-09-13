@@ -68,7 +68,6 @@ export function getNavSections(primaryRole: RoleCode): NavSection[] {
           { label: 'Smart Insights', to: '/intelligence', icon: Sparkles },
         ] },
         { label: 'System', items: [
-          { label: 'Security', to: '/security', icon: ShieldAlert },
           { label: 'Settings', to: '/settings', icon: Settings },
         ] },
       ];
@@ -82,6 +81,7 @@ export function getNavSections(primaryRole: RoleCode): NavSection[] {
             { label: 'Attendance', to: '/attendance', icon: Clock },
             { label: 'Overtime', to: '/overtime', icon: Clock },
             { label: 'Reports', to: '/reports', icon: BarChart3 },
+            { label: 'Smart Insights', to: '/intelligence', icon: Sparkles },
           ],
         },
         { label: 'System', items: [{ label: 'Settings', to: '/settings', icon: Settings }] },
@@ -104,7 +104,6 @@ export function getNavSections(primaryRole: RoleCode): NavSection[] {
         },
         { label: 'Insights', items: [{ label: 'Smart Insights', to: '/intelligence', icon: Sparkles }] },
         { label: 'System', items: [
-          { label: 'Security', to: '/security', icon: ShieldAlert },
           { label: 'Settings', to: '/settings', icon: Settings },
         ] },
       ];

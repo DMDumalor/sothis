@@ -20,6 +20,9 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { OvertimeModule } from './overtime/overtime.module';
 import { CompensationModule } from './compensation/compensation.module';
 import { PayrollModule } from './payroll/payroll.module';
+import { SecurityModule } from './security/security.module';
+import { ReportsModule } from './reports/reports.module';
+import { IntelligenceModule } from './intelligence/intelligence.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -59,6 +62,9 @@ import { AppService } from './app.service';
     OvertimeModule,
     CompensationModule,
     PayrollModule,
+    SecurityModule,
+    ReportsModule,
+    IntelligenceModule,
   ],
   controllers: [AppController],
   providers: [

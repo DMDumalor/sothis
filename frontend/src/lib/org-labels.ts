@@ -1,6 +1,8 @@
 import type { DocumentType, EmploymentStatus, EmploymentType, Gender } from '@/types/org';
 import type { AttendanceStatus, LeaveRequestStatus, OvertimeStatus } from '@/types/time';
 import type { PaymentMethod, PaymentStatus, PayrollStatus } from '@/types/payroll';
+import type { InsightStatus, RiskLevel } from '@/types/intelligence';
+import type { SecuritySeverity } from '@/types/security';
 
 export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   FULL_TIME: 'Full-time',
@@ -115,4 +117,46 @@ export const PAYMENT_STATUS_TONE: Record<PaymentStatus, 'success' | 'warning' | 
   PENDING: 'warning',
   COMPLETED: 'success',
   FAILED: 'error',
+};
+
+export const RISK_LEVEL_LABELS: Record<RiskLevel, string> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  CRITICAL: 'Critical',
+};
+
+export const RISK_LEVEL_TONE: Record<RiskLevel, 'success' | 'warning' | 'error' | 'neutral'> = {
+  LOW: 'success',
+  MEDIUM: 'warning',
+  HIGH: 'error',
+  CRITICAL: 'error',
+};
+
+export const INSIGHT_STATUS_LABELS: Record<InsightStatus, string> = {
+  OPEN: 'Open',
+  UNDER_REVIEW: 'Under review',
+  REVIEWED: 'Reviewed',
+  DISMISSED: 'Dismissed',
+};
+
+export const INSIGHT_STATUS_TONE: Record<InsightStatus, 'success' | 'warning' | 'error' | 'info' | 'neutral'> = {
+  OPEN: 'warning',
+  UNDER_REVIEW: 'info',
+  REVIEWED: 'success',
+  DISMISSED: 'neutral',
+};
+
+export const SECURITY_SEVERITY_LABELS: Record<SecuritySeverity, string> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  CRITICAL: 'Critical',
+};
+
+export const SECURITY_SEVERITY_TONE: Record<SecuritySeverity, 'success' | 'warning' | 'error' | 'neutral'> = {
+  LOW: 'success',
+  MEDIUM: 'warning',
+  HIGH: 'error',
+  CRITICAL: 'error',
 };

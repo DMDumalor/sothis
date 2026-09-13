@@ -1,8 +1,15 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { OvertimeStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { IntelligenceService } from '../intelligence/intelligence.service';
 import { CreatePayrollPeriodDto } from './dto/create-payroll-period.dto';
 import { MarkPaidDto } from './dto/mark-paid.dto';
 
@@ -26,7 +33,9 @@ const OVERTIME_MULTIPLIER = 1.5;
 const ALLOWANCE_RATE = 0.15;
 const DEDUCTION_RATE = 0.18;
 const INCOME_TAX_SHARE = 0.7;
-const PENSION_SHARE = 0.3;
+// Pension is the remainder of totalDeductions after income tax (0.3 share),
+// computed by subtraction below so the two always sum exactly to
+// totalDeductions with no floating-point drift from multiplying twice.
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -34,10 +43,13 @@ function round2(n: number): number {
 
 @Injectable()
 export class PayrollService {
+  private readonly logger = new Logger(PayrollService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly intelligence: IntelligenceService,
   ) {}
 
   async listPeriods(tenantId: string) {
@@ -48,28 +60,49 @@ export class PayrollService {
     });
   }
 
-  async createPeriod(params: { tenantId: string; dto: CreatePayrollPeriodDto; actorUserId: string }) {
+  async createPeriod(params: {
+    tenantId: string;
+    dto: CreatePayrollPeriodDto;
+    actorUserId: string;
+  }) {
     const { tenantId, dto, actorUserId } = params;
     const periodStart = new Date(dto.periodStart);
     const periodEnd = new Date(dto.periodEnd);
-    if (Number.isNaN(periodStart.getTime()) || Number.isNaN(periodEnd.getTime())) {
+    if (
+      Number.isNaN(periodStart.getTime()) ||
+      Number.isNaN(periodEnd.getTime())
+    ) {
       throw new BadRequestException('Invalid period dates.');
     }
     if (periodEnd < periodStart) {
-      throw new BadRequestException('periodEnd must be on or after periodStart.');
+      throw new BadRequestException(
+        'periodEnd must be on or after periodStart.',
+      );
     }
 
-    const name = dto.name ?? periodStart.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    const name =
+      dto.name ??
+      periodStart.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
     const existing = await this.prisma.payrollPeriod.findUnique({
-      where: { tenantId_periodStart_periodEnd: { tenantId, periodStart, periodEnd } },
+      where: {
+        tenantId_periodStart_periodEnd: { tenantId, periodStart, periodEnd },
+      },
     });
     if (existing) {
-      throw new ConflictException('A payroll period with these exact dates already exists.');
+      throw new ConflictException(
+        'A payroll period with these exact dates already exists.',
+      );
     }
 
     const period = await this.prisma.payrollPeriod.create({
-      data: { tenantId, name, periodStart, periodEnd, createdById: actorUserId },
+      data: {
+        tenantId,
+        name,
+        periodStart,
+        periodEnd,
+        createdById: actorUserId,
+      },
     });
 
     await this.audit.record({
@@ -78,7 +111,11 @@ export class PayrollService {
       action: 'payroll_period.created',
       resourceType: 'PayrollPeriod',
       resourceId: period.id,
-      metadata: { name, periodStart: dto.periodStart, periodEnd: dto.periodEnd },
+      metadata: {
+        name,
+        periodStart: dto.periodStart,
+        periodEnd: dto.periodEnd,
+      },
     });
 
     return period;
@@ -90,7 +127,14 @@ export class PayrollService {
       include: {
         payrolls: {
           include: {
-            employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } },
+            employee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                employeeCode: true,
+              },
+            },
           },
           orderBy: { employee: { lastName: 'asc' } },
         },
@@ -100,7 +144,11 @@ export class PayrollService {
     return period;
   }
 
-  private async findActiveCompensationAsOf(tenantId: string, employeeId: string, asOf: Date) {
+  private async findActiveCompensationAsOf(
+    tenantId: string,
+    employeeId: string,
+    asOf: Date,
+  ) {
     return this.prisma.employeeCompensation.findFirst({
       where: {
         tenantId,
@@ -119,13 +167,21 @@ export class PayrollService {
    * it can never silently overwrite figures that have already moved past
    * calculation into review/approval.
    */
-  async processPeriod(params: { tenantId: string; periodId: string; actorUserId: string }) {
+  async processPeriod(params: {
+    tenantId: string;
+    periodId: string;
+    actorUserId: string;
+  }) {
     const { tenantId, periodId, actorUserId } = params;
 
-    const period = await this.prisma.payrollPeriod.findFirst({ where: { id: periodId, tenantId } });
+    const period = await this.prisma.payrollPeriod.findFirst({
+      where: { id: periodId, tenantId },
+    });
     if (!period) throw new NotFoundException('Payroll period not found');
     if (period.status !== 'DRAFT') {
-      throw new ConflictException('Only a DRAFT payroll period can be processed.');
+      throw new ConflictException(
+        'Only a DRAFT payroll period can be processed.',
+      );
     }
 
     const employees = await this.prisma.employee.findMany({
@@ -138,7 +194,11 @@ export class PayrollService {
     let skippedCount = 0;
 
     for (const { id: employeeId } of employees) {
-      const compensation = await this.findActiveCompensationAsOf(tenantId, employeeId, period.periodEnd);
+      const compensation = await this.findActiveCompensationAsOf(
+        tenantId,
+        employeeId,
+        period.periodEnd,
+      );
       if (!compensation) {
         skippedCount += 1;
         continue;
@@ -155,8 +215,13 @@ export class PayrollService {
           date: { gte: period.periodStart, lte: period.periodEnd },
         },
       });
-      const overtimeHours = overtimeRecords.reduce((sum, r) => sum + Number(r.hours), 0);
-      const overtimePay = round2(overtimeHours * hourlyRate * OVERTIME_MULTIPLIER);
+      const overtimeHours = overtimeRecords.reduce(
+        (sum, r) => sum + Number(r.hours),
+        0,
+      );
+      const overtimePay = round2(
+        overtimeHours * hourlyRate * OVERTIME_MULTIPLIER,
+      );
 
       const totalAllowances = round2(baseSalary * ALLOWANCE_RATE);
       const grossPay = round2(baseSalary + overtimePay + totalAllowances);
@@ -167,7 +232,12 @@ export class PayrollService {
 
       await this.prisma.$transaction(async (tx) => {
         const payroll = await tx.payroll.upsert({
-          where: { payrollPeriodId_employeeId: { payrollPeriodId: period.id, employeeId } },
+          where: {
+            payrollPeriodId_employeeId: {
+              payrollPeriodId: period.id,
+              employeeId,
+            },
+          },
           update: {
             baseSalary,
             overtimePay,
@@ -197,14 +267,25 @@ export class PayrollService {
         // re-run against the same still-DRAFT period, e.g. after a
         // compensation correction).
         await tx.payrollItem.deleteMany({ where: { payrollId: payroll.id } });
-        await tx.payrollAllowance.deleteMany({ where: { payrollId: payroll.id } });
-        await tx.payrollDeduction.deleteMany({ where: { payrollId: payroll.id } });
+        await tx.payrollAllowance.deleteMany({
+          where: { payrollId: payroll.id },
+        });
+        await tx.payrollDeduction.deleteMany({
+          where: { payrollId: payroll.id },
+        });
 
         await tx.payrollItem.create({
-          data: { payrollId: payroll.id, type: 'BASE_SALARY', label: 'Base Salary', amount: baseSalary },
+          data: {
+            payrollId: payroll.id,
+            type: 'BASE_SALARY',
+            label: 'Base Salary',
+            amount: baseSalary,
+          },
         });
         for (const record of overtimeRecords) {
-          const pay = round2(Number(record.hours) * hourlyRate * OVERTIME_MULTIPLIER);
+          const pay = round2(
+            Number(record.hours) * hourlyRate * OVERTIME_MULTIPLIER,
+          );
           await tx.payrollItem.create({
             data: {
               payrollId: payroll.id,
@@ -217,17 +298,29 @@ export class PayrollService {
         }
         if (totalAllowances > 0) {
           await tx.payrollAllowance.create({
-            data: { payrollId: payroll.id, label: 'Housing & Transport Allowance', amount: totalAllowances },
+            data: {
+              payrollId: payroll.id,
+              label: 'Housing & Transport Allowance',
+              amount: totalAllowances,
+            },
           });
         }
         if (incomeTax > 0) {
           await tx.payrollDeduction.create({
-            data: { payrollId: payroll.id, label: 'Income Tax', amount: incomeTax },
+            data: {
+              payrollId: payroll.id,
+              label: 'Income Tax',
+              amount: incomeTax,
+            },
           });
         }
         if (pension > 0) {
           await tx.payrollDeduction.create({
-            data: { payrollId: payroll.id, label: 'Pension (SSNIT)', amount: pension },
+            data: {
+              payrollId: payroll.id,
+              label: 'Pension (SSNIT)',
+              amount: pension,
+            },
           });
         }
       });
@@ -249,6 +342,17 @@ export class PayrollService {
       metadata: { processedCount, skippedCount },
     });
 
+    // Explainable intelligence: check this just-processed period against
+    // the tenant's trailing payroll history for an anomalous variance.
+    // Never let a detection failure block payroll processing itself.
+    try {
+      await this.intelligence.evaluatePayrollPeriod(tenantId, period.id);
+    } catch (error) {
+      this.logger.error(
+        `Smart insight evaluation failed for payroll period ${period.id}: ${error}`,
+      );
+    }
+
     return { period: updatedPeriod, processedCount, skippedCount };
   }
 
@@ -256,7 +360,15 @@ export class PayrollService {
     const payroll = await this.prisma.payroll.findFirst({
       where: { id, tenantId },
       include: {
-        employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true, userId: true } },
+        employee: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            employeeCode: true,
+            userId: true,
+          },
+        },
         payrollPeriod: true,
         items: true,
         allowances: true,
@@ -277,12 +389,18 @@ export class PayrollService {
     const { tenantId, id, actorUserId } = params;
     const payroll = await this.findPayrollOrThrow(tenantId, id);
     if (payroll.status !== 'CALCULATED') {
-      throw new ConflictException('Only a CALCULATED payroll record can move to review.');
+      throw new ConflictException(
+        'Only a CALCULATED payroll record can move to review.',
+      );
     }
 
     const updated = await this.prisma.payroll.update({
       where: { id: payroll.id },
-      data: { status: 'UNDER_REVIEW', reviewedById: actorUserId, reviewedAt: new Date() },
+      data: {
+        status: 'UNDER_REVIEW',
+        reviewedById: actorUserId,
+        reviewedAt: new Date(),
+      },
     });
 
     await this.audit.record({
@@ -301,18 +419,28 @@ export class PayrollService {
     const { tenantId, id, actorUserId } = params;
     const payroll = await this.findPayrollOrThrow(tenantId, id);
     if (payroll.status !== 'UNDER_REVIEW') {
-      throw new ConflictException('Only a payroll record UNDER_REVIEW can be approved.');
+      throw new ConflictException(
+        'Only a payroll record UNDER_REVIEW can be approved.',
+      );
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.payroll.update({
         where: { id: payroll.id },
-        data: { status: 'APPROVED', approvedById: actorUserId, approvedAt: new Date() },
+        data: {
+          status: 'APPROVED',
+          approvedById: actorUserId,
+          approvedAt: new Date(),
+        },
       });
       await tx.payslip.upsert({
         where: { payrollId: payroll.id },
         update: {},
-        create: { tenantId, payrollId: payroll.id, employeeId: payroll.employeeId },
+        create: {
+          tenantId,
+          payrollId: payroll.id,
+          employeeId: payroll.employeeId,
+        },
       });
       return result;
     });
@@ -323,7 +451,10 @@ export class PayrollService {
       action: 'payroll.approved',
       resourceType: 'Payroll',
       resourceId: payroll.id,
-      metadata: { employeeId: payroll.employeeId, netPay: Number(payroll.netPay) },
+      metadata: {
+        employeeId: payroll.employeeId,
+        netPay: Number(payroll.netPay),
+      },
     });
 
     if (payroll.employee.userId) {
@@ -340,11 +471,18 @@ export class PayrollService {
     return updated;
   }
 
-  async markPaid(params: { tenantId: string; id: string; dto: MarkPaidDto; actorUserId: string }) {
+  async markPaid(params: {
+    tenantId: string;
+    id: string;
+    dto: MarkPaidDto;
+    actorUserId: string;
+  }) {
     const { tenantId, id, dto, actorUserId } = params;
     const payroll = await this.findPayrollOrThrow(tenantId, id);
     if (payroll.status !== 'APPROVED') {
-      throw new ConflictException('Only an APPROVED payroll record can be marked as paid.');
+      throw new ConflictException(
+        'Only an APPROVED payroll record can be marked as paid.',
+      );
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -372,7 +510,11 @@ export class PayrollService {
       action: 'payroll.paid',
       resourceType: 'Payroll',
       resourceId: payroll.id,
-      metadata: { employeeId: payroll.employeeId, amount: Number(payroll.netPay), method: dto.method },
+      metadata: {
+        employeeId: payroll.employeeId,
+        amount: Number(payroll.netPay),
+        method: dto.method,
+      },
     });
 
     if (payroll.employee.userId) {
@@ -391,7 +533,11 @@ export class PayrollService {
 
   // ---- Payslips -----------------------------------------------------
 
-  async listPayslips(tenantId: string, query: { employeeId?: string; page: number; pageSize: number }, onlyEmployeeId?: string) {
+  async listPayslips(
+    tenantId: string,
+    query: { employeeId?: string; page: number; pageSize: number },
+    onlyEmployeeId?: string,
+  ) {
     const where: Prisma.PayslipWhereInput = { tenantId };
     if (onlyEmployeeId) {
       where.employeeId = onlyEmployeeId;
@@ -407,7 +553,14 @@ export class PayrollService {
           payroll: {
             include: {
               payrollPeriod: true,
-              employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } },
+              employee: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  employeeCode: true,
+                },
+              },
             },
           },
         },
@@ -430,7 +583,10 @@ export class PayrollService {
 
   // ---- Payments -------------------------------------------------------
 
-  async listPayments(tenantId: string, query: { page: number; pageSize: number }) {
+  async listPayments(
+    tenantId: string,
+    query: { page: number; pageSize: number },
+  ) {
     const where: Prisma.PaymentWhereInput = { tenantId };
     const [total, items] = await this.prisma.$transaction([
       this.prisma.payment.count({ where }),
@@ -440,7 +596,14 @@ export class PayrollService {
           payroll: {
             include: {
               payrollPeriod: { select: { id: true, name: true } },
-              employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } },
+              employee: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  employeeCode: true,
+                },
+              },
             },
           },
         },
@@ -471,7 +634,14 @@ export class PayrollService {
             items: true,
             allowances: true,
             deductions: true,
-            employee: { select: { id: true, firstName: true, lastName: true, employeeCode: true } },
+            employee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                employeeCode: true,
+              },
+            },
           },
         },
       },

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Bell, Menu, Search, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, Search, LogOut, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth-store';
 import { authApi } from '@/lib/auth-api';
 import { ROLE_LABELS } from '@/lib/nav-config';
+import { NotificationBell } from './NotificationBell';
 import type { RoleCode } from '@/types/auth';
 
 export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
@@ -48,12 +49,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
           </span>
         )}
 
-        <button
-          className="relative rounded-md p-2 text-slate-500 hover:bg-slate-100"
-          aria-label="Notifications"
-        >
-          <Bell className="size-5" />
-        </button>
+        <NotificationBell />
 
         <div className="relative">
           <button

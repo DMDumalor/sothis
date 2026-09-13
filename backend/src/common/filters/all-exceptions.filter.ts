@@ -34,7 +34,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message =
         typeof body === 'string'
           ? body
-          : ((body as { message?: string | string[] }).message ?? exception.message);
+          : ((body as { message?: string | string[] }).message ??
+            exception.message);
       code = HttpStatus[status] ?? 'ERROR';
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       // Never leak raw Prisma/SQL error text; map the common cases.
@@ -50,6 +51,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
         status = HttpStatus.BAD_REQUEST;
         message = 'The request could not be processed.';
         code = 'DATABASE_ERROR';
+        // This bucket is deliberately generic to the client (never leak raw
+        // DB errors), but that means an unanticipated Prisma error code is
+        // otherwise invisible operationally. Always log the real code/meta
+        // server-side so a misconfigured DB (e.g. wrong credentials, a
+        // missing column after schema drift) is diagnosable from the logs
+        // rather than just "the request could not be processed" forever.
+        this.logger.error(
+          `Unhandled Prisma error code=${exception.code} meta=${JSON.stringify(exception.meta)}`,
+        );
       }
     }
 
@@ -59,7 +69,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
         exception instanceof Error ? exception.stack : String(exception),
       );
     } else {
-      this.logger.warn(`${request.method} ${request.url} -> ${status}: ${message}`);
+      this.logger.warn(
+        `${request.method} ${request.url} -> ${status}: ${message}`,
+      );
     }
 
     response.status(status).json({
