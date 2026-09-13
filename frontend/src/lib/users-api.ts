@@ -2,10 +2,14 @@ import { apiClient } from './api-client';
 import type { PaginatedResult } from '@/types/org';
 import type {
   AccountInvitation,
+  BulkInviteEntry,
+  BulkInviteResult,
   EmployeeWithoutAccount,
   InviteUserInput,
+  UserActivityEntry,
   UserListItem,
   UserQuery,
+  UserSession,
   UserStatus,
 } from '@/types/users';
 import type { RoleCode } from '@/types/auth';
@@ -43,4 +47,21 @@ export const usersApi = {
 
   resendInvitation: (invitationId: string) =>
     apiClient.post(`/users/invitations/${invitationId}/resend`).then((r) => r.data),
+
+  bulkInvite: (invitations: BulkInviteEntry[]) =>
+    apiClient
+      .post<BulkInviteResult>('/users/invitations/bulk', { invitations })
+      .then((r) => r.data),
+
+  listSessions: (id: string) =>
+    apiClient.get<UserSession[]>(`/users/${id}/sessions`).then((r) => r.data),
+
+  revokeSession: (id: string, sessionId: string) =>
+    apiClient.post(`/users/${id}/sessions/${sessionId}/revoke`).then((r) => r.data),
+
+  revokeAllSessions: (id: string) =>
+    apiClient.post(`/users/${id}/sessions/revoke-all`).then((r) => r.data),
+
+  getActivity: (id: string) =>
+    apiClient.get<UserActivityEntry[]>(`/users/${id}/activity`).then((r) => r.data),
 };

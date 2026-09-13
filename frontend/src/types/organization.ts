@@ -1,5 +1,12 @@
 import type { RoleCode } from './auth';
 
+export interface OrganizationSecurityPolicy {
+  passwordMinLength: number;
+  lockoutMaxAttempts: number;
+  lockoutDurationMinutes: number;
+  refreshTokenTtlDays: number;
+}
+
 export interface OrganizationProfile {
   id: string;
   name: string;
@@ -8,6 +15,7 @@ export interface OrganizationProfile {
   timezone: string;
   logoUrl: string | null;
   createdAt: string;
+  security: OrganizationSecurityPolicy;
   stats: {
     employeeCount: number;
     activeUserCount: number;
@@ -21,4 +29,8 @@ export interface UpdateOrganizationInput {
   name?: string;
   timezone?: string;
   logoUrl?: string;
+  passwordMinLength?: number;
+  lockoutMaxAttempts?: number;
+  lockoutDurationMinutes?: number;
+  refreshTokenTtlDays?: number;
 }

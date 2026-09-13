@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, ShieldCheck, KeyRound, UserX, UserCheck, RotateCcw, Ban } from 'lucide-react';
+import { Plus, ShieldCheck, KeyRound, UserX, UserCheck, RotateCcw, Ban, Eye, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -18,6 +18,8 @@ import type { RoleCode } from '@/types/auth';
 import type { AccountInvitation, UserListItem, UserStatus } from '@/types/users';
 import { InviteUserModal } from './InviteUserModal';
 import { UserRolesModal } from './UserRolesModal';
+import { BulkInviteModal } from './BulkInviteModal';
+import { UserDetailModal } from './UserDetailModal';
 
 const PAGE_SIZE = 20;
 const ROLE_OPTIONS: RoleCode[] = ['ADMIN', 'HR', 'DEPARTMENT_HEAD', 'FINANCE', 'DG', 'EMPLOYEE'];
@@ -31,6 +33,7 @@ function UsersTab() {
   const [role, setRole] = useState('');
   const [page, setPage] = useState(1);
   const [editingRoles, setEditingRoles] = useState<UserListItem | null>(null);
+  const [viewingUser, setViewingUser] = useState<UserListItem | null>(null);
   const [confirmDisable, setConfirmDisable] = useState<UserListItem | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -119,6 +122,14 @@ function UsersTab() {
         const isSelf = row.id === currentUserId;
         return (
           <div className="flex justify-end gap-1.5">
+            <button
+              onClick={() => setViewingUser(row)}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              aria-label={`View details for ${row.email}`}
+              title="View details"
+            >
+              <Eye className="size-4" />
+            </button>
             <button
               onClick={() => setEditingRoles(row)}
               className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
@@ -241,6 +252,7 @@ function UsersTab() {
       </div>
 
       <UserRolesModal open={!!editingRoles} onClose={() => setEditingRoles(null)} user={editingRoles} />
+      <UserDetailModal open={!!viewingUser} onClose={() => setViewingUser(null)} user={viewingUser} />
 
       <ConfirmDialog
         open={!!confirmDisable}
@@ -365,6 +377,7 @@ function InvitationsTab() {
 export function UsersPage() {
   const [tab, setTab] = useState<'users' | 'invitations'>('users');
   const [showInvite, setShowInvite] = useState(false);
+  const [showBulkInvite, setShowBulkInvite] = useState(false);
 
   return (
     <div className="flex flex-col gap-6">
@@ -375,10 +388,16 @@ export function UsersPage() {
             Manage platform accounts, roles, and account invitations for this organization.
           </p>
         </div>
-        <Button onClick={() => setShowInvite(true)}>
-          <Plus className="size-4" />
-          Invite user
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setShowBulkInvite(true)}>
+            <Upload className="size-4" />
+            Bulk invite
+          </Button>
+          <Button onClick={() => setShowInvite(true)}>
+            <Plus className="size-4" />
+            Invite user
+          </Button>
+        </div>
       </div>
 
       <Tabs
@@ -393,6 +412,7 @@ export function UsersPage() {
       {tab === 'users' ? <UsersTab /> : <InvitationsTab />}
 
       <InviteUserModal open={showInvite} onClose={() => setShowInvite(false)} />
+      <BulkInviteModal open={showBulkInvite} onClose={() => setShowBulkInvite(false)} />
     </div>
   );
 }

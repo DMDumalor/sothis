@@ -37,6 +37,16 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Per-tenant security policy (Admin Console > Organization Settings).
+  // Defaults match the platform-wide defaults previously hardcoded in
+  // src/config/configuration.ts, so adding these columns changes nothing
+  // for a tenant until an Admin explicitly edits them. AuthService/
+  // TokenService read these instead of ConfigService for the values below.
+  passwordMinLength      Int @default(10) // floor also enforced by AcceptInvitationDto's own @MinLength(10) — this can only raise the bar, never lower it
+  lockoutMaxAttempts     Int @default(5)
+  lockoutDurationMinutes Int @default(15)
+  refreshTokenTtlDays    Int @default(7)
+
   users               User[]
   roles               Role[]
   refreshTokens       RefreshToken[]

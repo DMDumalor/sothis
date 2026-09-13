@@ -3,7 +3,7 @@ import type { AttendanceStatus, LeaveRequestStatus, OvertimeStatus } from '@/typ
 import type { PaymentMethod, PaymentStatus, PayrollStatus } from '@/types/payroll';
 import type { InsightStatus, RiskLevel } from '@/types/intelligence';
 import type { SecuritySeverity } from '@/types/security';
-import type { InvitationStatus, UserStatus } from '@/types/users';
+import type { InvitationStatus, LoginAuditResult, UserStatus } from '@/types/users';
 
 export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   FULL_TIME: 'Full-time',
@@ -188,4 +188,24 @@ export const INVITATION_STATUS_TONE: Record<InvitationStatus, 'success' | 'warni
   ACCEPTED: 'success',
   REVOKED: 'neutral',
   EXPIRED: 'error',
+};
+
+export const LOGIN_AUDIT_RESULT_LABELS: Record<LoginAuditResult, string> = {
+  SUCCESS: 'Signed in',
+  INVALID_CREDENTIALS: 'Invalid credentials',
+  ACCOUNT_LOCKED: 'Blocked — account locked',
+  ACCOUNT_DISABLED: 'Blocked — account disabled',
+  ACCOUNT_NOT_ACTIVATED: 'Blocked — account not activated',
+  TENANT_NOT_FOUND: 'Blocked — unknown organization',
+  REFRESH: 'Session renewed',
+};
+
+export const LOGIN_AUDIT_RESULT_TONE: Record<LoginAuditResult, 'success' | 'warning' | 'error' | 'neutral'> = {
+  SUCCESS: 'success',
+  INVALID_CREDENTIALS: 'warning',
+  ACCOUNT_LOCKED: 'error',
+  ACCOUNT_DISABLED: 'error',
+  ACCOUNT_NOT_ACTIVATED: 'warning',
+  TENANT_NOT_FOUND: 'neutral',
+  REFRESH: 'neutral',
 };

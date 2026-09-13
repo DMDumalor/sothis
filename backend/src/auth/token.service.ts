@@ -54,6 +54,11 @@ export class TokenService {
     ipAddress?: string;
     userAgent?: string;
     family?: string;
+    // Per-tenant override (Tenant.refreshTokenTtlDays, set via Organization
+    // Settings). Falls back to the global config default so any caller
+    // that doesn't have the tenant record handy (there shouldn't be one,
+    // but this keeps the method safe) still works.
+    refreshTokenTtlDays?: number;
   }): Promise<IssuedTokens> {
     const accessToken = this.signAccessToken({
       sub: params.userId,
@@ -63,7 +68,9 @@ export class TokenService {
     });
 
     const refreshToken = randomBytes(48).toString('base64url');
-    const refreshDays = this.config.get<number>('jwt.refreshExpiresInDays')!;
+    const refreshDays =
+      params.refreshTokenTtlDays ??
+      this.config.get<number>('jwt.refreshExpiresInDays')!;
     const expiresAt = new Date(Date.now() + refreshDays * 24 * 60 * 60 * 1000);
 
     await this.prisma.refreshToken.create({
@@ -94,9 +101,7 @@ export class TokenService {
     refreshToken: string;
     ipAddress?: string;
     userAgent?: string;
-  }): Promise<
-    IssuedTokens & { userId: string; tenantId: string }
-  > {
+  }): Promise<IssuedTokens & { userId: string; tenantId: string }> {
     const tokenHash = hashToken(params.refreshToken);
     const existing = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
@@ -145,6 +150,15 @@ export class TokenService {
       data: { revokedAt: new Date() },
     });
 
+    // Re-fetch the tenant's current TTL rather than reusing whatever the
+    // original token was issued with — if an Admin shortens/lengthens it
+    // via Organization Settings mid-session, rotation should pick up the
+    // new value immediately rather than perpetuating the old one forever.
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: existing.user.tenantId },
+      select: { refreshTokenTtlDays: true },
+    });
+
     const roles = existing.user.userRoles.map((ur) => ur.role.code);
     const issued = await this.issueTokenPair({
       userId: existing.user.id,
@@ -154,6 +168,7 @@ export class TokenService {
       ipAddress: params.ipAddress,
       userAgent: params.userAgent,
       family: existing.family,
+      refreshTokenTtlDays: tenant?.refreshTokenTtlDays,
     });
 
     await this.prisma.refreshToken.update({

@@ -53,6 +53,12 @@ export class OrganizationService {
       timezone: tenant.timezone,
       logoUrl: tenant.logoUrl,
       createdAt: tenant.createdAt,
+      security: {
+        passwordMinLength: tenant.passwordMinLength,
+        lockoutMaxAttempts: tenant.lockoutMaxAttempts,
+        lockoutDurationMinutes: tenant.lockoutDurationMinutes,
+        refreshTokenTtlDays: tenant.refreshTokenTtlDays,
+      },
       stats: {
         employeeCount,
         activeUserCount,

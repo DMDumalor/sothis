@@ -65,3 +65,61 @@ export interface InviteUserInput {
   roleCode: RoleCode;
   email?: string;
 }
+
+export interface BulkInviteEntry {
+  employeeId: string;
+  roleCode: RoleCode;
+  email?: string;
+}
+
+export interface BulkInviteRowResult {
+  employeeId: string;
+  success: boolean;
+  email?: string;
+  error?: string;
+}
+
+export interface BulkInviteResult {
+  results: BulkInviteRowResult[];
+  successCount: number;
+  failureCount: number;
+}
+
+export interface UserSession {
+  id: string;
+  family: string;
+  createdByIp: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export type LoginAuditResult =
+  | 'SUCCESS'
+  | 'INVALID_CREDENTIALS'
+  | 'ACCOUNT_LOCKED'
+  | 'ACCOUNT_DISABLED'
+  | 'ACCOUNT_NOT_ACTIVATED'
+  | 'TENANT_NOT_FOUND'
+  | 'REFRESH';
+
+export interface UserActivityLoginEntry {
+  kind: 'login';
+  id: string;
+  result: LoginAuditResult;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface UserActivityAuditEntry {
+  kind: 'audit';
+  id: string;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  metadata: unknown;
+  createdAt: string;
+}
+
+export type UserActivityEntry = UserActivityLoginEntry | UserActivityAuditEntry;

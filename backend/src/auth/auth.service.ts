@@ -137,6 +137,8 @@ export class AuthService {
         tenant.id,
         email,
         organizationCode,
+        tenant.lockoutMaxAttempts,
+        tenant.lockoutDurationMinutes,
         meta,
       );
       throw new UnauthorizedException(this.GENERIC_LOGIN_ERROR);
@@ -169,6 +171,7 @@ export class AuthService {
       roles,
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent,
+      refreshTokenTtlDays: tenant.refreshTokenTtlDays,
     });
 
     return {
@@ -188,11 +191,10 @@ export class AuthService {
     tenantId: string,
     email: string,
     organizationCode: string,
+    maxAttempts: number,
+    lockoutMinutes: number,
     meta: RequestMeta,
   ) {
-    const maxAttempts = this.config.get<number>('security.lockoutMaxAttempts')!;
-    const lockoutMinutes = this.config.get<number>('security.lockoutMinutes')!;
-
     // Atomic increment avoids a lost-update race between concurrent failed
     // attempts from the same account.
     const updated = await this.prisma.user.update({
@@ -366,6 +368,15 @@ export class AuthService {
     ) {
       throw new BadRequestException(
         'This invitation link is invalid or has expired.',
+      );
+    }
+
+    // AcceptInvitationDto's @MinLength(10) is the platform-wide floor; an
+    // Admin can only raise it further via Organization Settings, never
+    // lower it below what the DTO already enforces.
+    if (dto.password.length < invitation.tenant.passwordMinLength) {
+      throw new BadRequestException(
+        `password must be at least ${invitation.tenant.passwordMinLength} characters for this organization`,
       );
     }
 

@@ -9,10 +9,12 @@ import { InvitationStatus, Prisma, RoleCode, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthService } from '../auth/auth.service';
+import { TokenService } from '../auth/token.service';
 import { QueryUsersDto } from './dto/query-users.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { SettableUserStatus } from './dto/update-user-status.dto';
 import { UpdateUserRolesDto } from './dto/update-user-roles.dto';
+import { BulkInviteUsersDto } from './dto/bulk-invite-users.dto';
 
 const USER_LIST_SELECT = {
   id: true,
@@ -44,6 +46,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly authService: AuthService,
+    private readonly tokenService: TokenService,
   ) {}
 
   async list(tenantId: string, query: QueryUsersDto) {
@@ -368,5 +371,208 @@ export class UsersService {
       organizationCode: params.organizationCode,
       invitedByName: params.actorEmployeeName ?? params.actorEmail,
     });
+  }
+
+  async bulkInviteUsers(params: {
+    tenantId: string;
+    dto: BulkInviteUsersDto;
+    actorUserId: string;
+    actorEmail: string;
+    actorEmployeeName: string | null;
+    organizationCode: string;
+  }) {
+    // Sequential, not Promise.all: each row hits the same
+    // "revoke-then-create" invitation logic and sends a mail, and keeping
+    // rows in order makes the per-row result list map 1:1 onto whatever
+    // order the admin uploaded them in (e.g. CSV row order).
+    const results: Array<{
+      employeeId: string;
+      success: boolean;
+      email?: string;
+      error?: string;
+    }> = [];
+
+    for (const entry of params.dto.invitations) {
+      try {
+        const invite = await this.authService.createInvitation({
+          tenantId: params.tenantId,
+          employeeId: entry.employeeId,
+          invitedById: params.actorUserId,
+          emailOverride: entry.email,
+          roleCode: entry.roleCode,
+          organizationCode: params.organizationCode,
+          invitedByName: params.actorEmployeeName ?? params.actorEmail,
+        });
+        results.push({
+          employeeId: entry.employeeId,
+          success: true,
+          email: invite.email,
+        });
+      } catch (error) {
+        results.push({
+          employeeId: entry.employeeId,
+          success: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to invite this employee.',
+        });
+      }
+    }
+
+    await this.audit.record({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      action: 'user.bulk_invited',
+      resourceType: 'User',
+      metadata: {
+        total: results.length,
+        successCount: results.filter((r) => r.success).length,
+        failureCount: results.filter((r) => !r.success).length,
+      },
+    });
+
+    return {
+      results,
+      successCount: results.filter((r) => r.success).length,
+      failureCount: results.filter((r) => !r.success).length,
+    };
+  }
+
+  // -----------------------------------------------------------------
+  // Sessions (spec section 14/51 — security hardening beyond disable):
+  // disabling or even locking a user's account does not invalidate an
+  // access token already issued (up to 15 minutes of life left), but it
+  // does stop them getting a new one — this is what "sign out
+  // everywhere" actually revokes: the refresh tokens that let a session
+  // renew itself. Genuinely useful when a device is lost/stolen.
+  // -----------------------------------------------------------------
+
+  async listSessions(tenantId: string, userId: string) {
+    await this.findOne(tenantId, userId);
+    return this.prisma.refreshToken.findMany({
+      where: {
+        tenantId,
+        userId,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      select: {
+        id: true,
+        family: true,
+        createdByIp: true,
+        userAgent: true,
+        createdAt: true,
+        expiresAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async revokeSession(params: {
+    tenantId: string;
+    userId: string;
+    sessionId: string;
+    actorUserId: string;
+  }) {
+    const session = await this.prisma.refreshToken.findFirst({
+      where: {
+        id: params.sessionId,
+        tenantId: params.tenantId,
+        userId: params.userId,
+      },
+    });
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+    if (!session.revokedAt) {
+      await this.prisma.refreshToken.update({
+        where: { id: session.id },
+        data: { revokedAt: new Date() },
+      });
+    }
+
+    await this.audit.record({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      action: 'user.session_revoked',
+      resourceType: 'User',
+      resourceId: params.userId,
+      metadata: { sessionId: params.sessionId },
+    });
+
+    return { success: true };
+  }
+
+  async revokeAllSessions(params: {
+    tenantId: string;
+    userId: string;
+    actorUserId: string;
+  }) {
+    const user = await this.findOne(params.tenantId, params.userId);
+    await this.tokenService.revokeAllForUser(user.id);
+
+    await this.audit.record({
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      action: 'user.sessions_revoked_all',
+      resourceType: 'User',
+      resourceId: user.id,
+      metadata: { email: user.email },
+    });
+
+    return { success: true };
+  }
+
+  // -----------------------------------------------------------------
+  // Activity — merges login attempts (LoginAudit) with this user's own
+  // audit-trail entries (AuditLog, both as actor and as the affected
+  // resource) into one chronological feed for the admin console's user
+  // detail view.
+  // -----------------------------------------------------------------
+
+  async getActivity(tenantId: string, userId: string) {
+    await this.findOne(tenantId, userId);
+
+    const [loginAudits, auditLogs] = await Promise.all([
+      this.prisma.loginAudit.findMany({
+        where: { tenantId, userId },
+        orderBy: { createdAt: 'desc' },
+        take: 25,
+      }),
+      this.prisma.auditLog.findMany({
+        where: {
+          tenantId,
+          OR: [
+            { actorUserId: userId },
+            { resourceType: 'User', resourceId: userId },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 25,
+      }),
+    ]);
+
+    const merged = [
+      ...loginAudits.map((a) => ({
+        kind: 'login' as const,
+        id: a.id,
+        result: a.result,
+        ipAddress: a.ipAddress,
+        userAgent: a.userAgent,
+        createdAt: a.createdAt,
+      })),
+      ...auditLogs.map((a) => ({
+        kind: 'audit' as const,
+        id: a.id,
+        action: a.action,
+        resourceType: a.resourceType,
+        resourceId: a.resourceId,
+        metadata: a.metadata,
+        createdAt: a.createdAt,
+      })),
+    ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    return merged.slice(0, 40);
   }
 }
