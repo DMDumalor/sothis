@@ -246,17 +246,22 @@ enum InvitationStatus {
 }
 
 model AccountInvitation {
-  id           String            @id @default(uuid())
-  tenantId     String
-  employeeId   String
-  email        String
-  tokenHash    String            @unique
-  status       InvitationStatus  @default(PENDING)
-  expiresAt    DateTime
-  invitedById  String
-  acceptedAt   DateTime?
-  revokedAt    DateTime?
-  createdAt    DateTime          @default(now())
+  id               String            @id @default(uuid())
+  tenantId         String
+  employeeId       String
+  email            String
+  tokenHash        String            @unique
+  status           InvitationStatus  @default(PENDING)
+  // The role the invited account will be assigned when the invitation is
+  // accepted (src/auth/auth.service.ts#acceptInvitation). Nullable so
+  // invitations issued before this field existed keep their historical
+  // default of EMPLOYEE rather than failing to accept.
+  intendedRoleCode RoleCode?
+  expiresAt        DateTime
+  invitedById      String
+  acceptedAt       DateTime?
+  revokedAt        DateTime?
+  createdAt        DateTime          @default(now())
 
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)

@@ -132,14 +132,24 @@ export class AuthService {
 
     const passwordValid = await argon2.verify(user.passwordHash, dto.password);
     if (!passwordValid) {
-      await this.handleFailedPassword(user.id, tenant.id, email, organizationCode, meta);
+      await this.handleFailedPassword(
+        user.id,
+        tenant.id,
+        email,
+        organizationCode,
+        meta,
+      );
       throw new UnauthorizedException(this.GENERIC_LOGIN_ERROR);
     }
 
     // Success: atomically clear lockout counters and stamp lastLoginAt.
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
+      data: {
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        lastLoginAt: new Date(),
+      },
     });
 
     await this.logLoginAttempt({
@@ -180,9 +190,7 @@ export class AuthService {
     organizationCode: string,
     meta: RequestMeta,
   ) {
-    const maxAttempts = this.config.get<number>(
-      'security.lockoutMaxAttempts',
-    )!;
+    const maxAttempts = this.config.get<number>('security.lockoutMaxAttempts')!;
     const lockoutMinutes = this.config.get<number>('security.lockoutMinutes')!;
 
     // Atomic increment avoids a lost-update race between concurrent failed
@@ -255,6 +263,7 @@ export class AuthService {
     emailOverride?: string;
     organizationCode: string;
     invitedByName: string;
+    roleCode?: RoleCode;
   }) {
     const employee = await this.prisma.employee.findFirst({
       where: { id: params.employeeId, tenantId: params.tenantId },
@@ -271,6 +280,10 @@ export class AuthService {
     const expiresInDays = this.config.get<number>(
       'security.invitationExpiresInDays',
     )!;
+    // Defaults to EMPLOYEE — the historical behavior for every invitation
+    // issued before intendedRoleCode existed, and the safe default for
+    // HR's employee-invite flow (which never asked for a role).
+    const intendedRoleCode = params.roleCode ?? RoleCode.EMPLOYEE;
 
     // Revoke any still-pending invitation for this employee before issuing a new one.
     await this.prisma.accountInvitation.updateMany({
@@ -284,6 +297,7 @@ export class AuthService {
         employeeId: employee.id,
         email,
         tokenHash: hashToken(token),
+        intendedRoleCode,
         expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000),
         invitedById: params.invitedById,
       },
@@ -303,9 +317,15 @@ export class AuthService {
       action: 'employee.account_invitation.created',
       resourceType: 'Employee',
       resourceId: employee.id,
+      metadata: { intendedRoleCode },
     });
 
-    return { id: invitation.id, email, expiresAt: invitation.expiresAt };
+    return {
+      id: invitation.id,
+      email,
+      expiresAt: invitation.expiresAt,
+      intendedRoleCode,
+    };
   }
 
   async revokeInvitation(params: {
@@ -344,7 +364,9 @@ export class AuthService {
       invitation.status !== InvitationStatus.PENDING ||
       invitation.expiresAt < new Date()
     ) {
-      throw new BadRequestException('This invitation link is invalid or has expired.');
+      throw new BadRequestException(
+        'This invitation link is invalid or has expired.',
+      );
     }
 
     const passwordHash = await argon2.hash(dto.password);
@@ -360,14 +382,21 @@ export class AuthService {
         },
       });
 
-      const employeeRole = await tx.role.findUnique({
+      // The invitation records the role it was issued for (defaults to
+      // EMPLOYEE for invitations that predate this field) — never
+      // hardcode EMPLOYEE here, or a Department Head/Finance/etc. invite
+      // would silently downgrade to a plain Employee on acceptance.
+      const grantedRole = await tx.role.findUnique({
         where: {
-          tenantId_code: { tenantId: invitation.tenantId, code: RoleCode.EMPLOYEE },
+          tenantId_code: {
+            tenantId: invitation.tenantId,
+            code: invitation.intendedRoleCode ?? RoleCode.EMPLOYEE,
+          },
         },
       });
-      if (employeeRole) {
+      if (grantedRole) {
         await tx.userRole.create({
-          data: { userId: createdUser.id, roleId: employeeRole.id },
+          data: { userId: createdUser.id, roleId: grantedRole.id },
         });
       }
 

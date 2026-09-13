@@ -46,6 +46,7 @@ export class AccountInvitationController {
       employeeId,
       invitedById: actor.userId,
       emailOverride: dto.email,
+      roleCode: dto.roleCode,
       organizationCode: tenant?.code ?? '',
       invitedByName: actorUser?.employee
         ? `${actorUser.employee.firstName} ${actorUser.employee.lastName}`

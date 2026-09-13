@@ -65,3 +65,15 @@ export function canReviewPayroll(roles: RoleCode[]): boolean {
 export function canApprovePayroll(roles: RoleCode[]): boolean {
   return roles.includes('FINANCE');
 }
+
+export function canManagePlatformUsers(roles: RoleCode[]): boolean {
+  return roles.includes('ADMIN');
+}
+
+export function canManageRolesAndPermissions(roles: RoleCode[]): boolean {
+  return roles.includes('ADMIN');
+}
+
+export function canManageOrganization(roles: RoleCode[]): boolean {
+  return roles.includes('ADMIN');
+}

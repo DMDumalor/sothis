@@ -3,6 +3,7 @@ import type { AttendanceStatus, LeaveRequestStatus, OvertimeStatus } from '@/typ
 import type { PaymentMethod, PaymentStatus, PayrollStatus } from '@/types/payroll';
 import type { InsightStatus, RiskLevel } from '@/types/intelligence';
 import type { SecuritySeverity } from '@/types/security';
+import type { InvitationStatus, UserStatus } from '@/types/users';
 
 export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   FULL_TIME: 'Full-time',
@@ -159,4 +160,32 @@ export const SECURITY_SEVERITY_TONE: Record<SecuritySeverity, 'success' | 'warni
   MEDIUM: 'warning',
   HIGH: 'error',
   CRITICAL: 'error',
+};
+
+export const USER_STATUS_LABELS: Record<UserStatus, string> = {
+  INVITED: 'Invited',
+  ACTIVE: 'Active',
+  DISABLED: 'Disabled',
+  LOCKED: 'Locked',
+};
+
+export const USER_STATUS_TONE: Record<UserStatus, 'success' | 'warning' | 'error' | 'info' | 'neutral'> = {
+  INVITED: 'info',
+  ACTIVE: 'success',
+  DISABLED: 'neutral',
+  LOCKED: 'error',
+};
+
+export const INVITATION_STATUS_LABELS: Record<InvitationStatus, string> = {
+  PENDING: 'Pending',
+  ACCEPTED: 'Accepted',
+  REVOKED: 'Revoked',
+  EXPIRED: 'Expired',
+};
+
+export const INVITATION_STATUS_TONE: Record<InvitationStatus, 'success' | 'warning' | 'error' | 'neutral'> = {
+  PENDING: 'warning',
+  ACCEPTED: 'success',
+  REVOKED: 'neutral',
+  EXPIRED: 'error',
 };

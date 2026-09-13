@@ -20,6 +20,9 @@ import { PayslipsPage } from '@/pages/payroll/PayslipsPage';
 import { ReportsPage } from '@/pages/reports/ReportsPage';
 import { SecurityCenterPage } from '@/pages/security/SecurityCenterPage';
 import { IntelligencePage } from '@/pages/intelligence/IntelligencePage';
+import { UsersPage } from '@/pages/admin/UsersPage';
+import { RolesPermissionsPage } from '@/pages/admin/RolesPermissionsPage';
+import { OrganizationSettingsPage } from '@/pages/admin/OrganizationSettingsPage';
 
 function App() {
   useBootstrapAuth();
@@ -77,11 +80,20 @@ function App() {
             <Route path="/intelligence" element={<IntelligencePage />} />
             <Route path="/security" element={<SecurityCenterPage />} />
 
+            {/* Admin platform console: USER_READ/USER_CREATE/USER_DISABLE/
+                ROLE_MANAGE/PERMISSION_MANAGE/ORGANIZATION_MANAGE (ADMIN
+                only) gate every read and mutation server-side; these
+                routes render the console shell regardless of role, but a
+                non-Admin hitting them gets 403s from every request the
+                page makes. */}
+            <Route path="/admin/users" element={<UsersPage />} />
+            <Route path="/admin/roles" element={<RolesPermissionsPage />} />
+            <Route path="/admin/organization" element={<OrganizationSettingsPage />} />
+
             {/* Remaining feature routes (DG-specific executive dashboard
-                widgets beyond HomePage, admin console for Users/Roles/
-                Organization) are added milestone by milestone per the
-                architecture plan, each as a full vertical slice rather
-                than an empty page. */}
+                widgets beyond HomePage) are added milestone by milestone
+                per the architecture plan, each as a full vertical slice
+                rather than an empty page. */}
           </Route>
         </Route>
       </Routes>

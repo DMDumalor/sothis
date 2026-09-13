@@ -23,6 +23,9 @@ import { PayrollModule } from './payroll/payroll.module';
 import { SecurityModule } from './security/security.module';
 import { ReportsModule } from './reports/reports.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
+import { UsersModule } from './users/users.module';
+import { RolesModule } from './roles/roles.module';
+import { OrganizationModule } from './organization/organization.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -65,6 +68,9 @@ import { AppService } from './app.service';
     SecurityModule,
     ReportsModule,
     IntelligenceModule,
+    UsersModule,
+    RolesModule,
+    OrganizationModule,
   ],
   controllers: [AppController],
   providers: [
