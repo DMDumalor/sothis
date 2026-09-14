@@ -46,6 +46,46 @@ export class TokenService {
     });
   }
 
+  /**
+   * Short-lived (5 minute) intermediate token issued after a correct
+   * password but before a required MFA code is verified — it authorizes
+   * nothing except completing the MFA challenge. Deliberately signed with
+   * `jwt.refreshSecret` (otherwise unused now that refresh tokens are
+   * opaque strings, not JWTs) rather than `jwt.accessSecret`, so a leaked
+   * access-token signing key alone could never be used to forge a
+   * "password already verified" claim, and vice versa.
+   */
+  signMfaChallenge(params: { userId: string; tenantId: string }): string {
+    return this.jwt.sign(
+      {
+        sub: params.userId,
+        tenantId: params.tenantId,
+        purpose: 'mfa_challenge',
+      },
+      {
+        secret: this.config.get<string>('jwt.refreshSecret'),
+        expiresIn: '5m',
+      },
+    );
+  }
+
+  verifyMfaChallenge(token: string): { userId: string; tenantId: string } {
+    let payload: { sub: string; tenantId: string; purpose: string };
+    try {
+      payload = this.jwt.verify(token, {
+        secret: this.config.get<string>('jwt.refreshSecret'),
+      });
+    } catch {
+      throw new UnauthorizedException(
+        'This sign-in attempt has expired. Please log in again.',
+      );
+    }
+    if (payload.purpose !== 'mfa_challenge') {
+      throw new UnauthorizedException('Invalid authentication challenge.');
+    }
+    return { userId: payload.sub, tenantId: payload.tenantId };
+  }
+
   async issueTokenPair(params: {
     userId: string;
     tenantId: string;

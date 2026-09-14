@@ -98,6 +98,7 @@ model User {
   mustChangePassword  Boolean    @default(false)
   mfaEnabled          Boolean    @default(false)
   mfaSecret           String?
+  mfaBackupCodes      String[]   @default([])
   passwordChangedAt   DateTime?
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
@@ -313,6 +314,7 @@ enum SecurityEventType {
   UNUSUAL_ACCESS_PATTERN
   CROSS_TENANT_ACCESS_ATTEMPT
   REFRESH_TOKEN_REUSE
+  MFA_CHALLENGE_FAILED
 }
 
 enum SecuritySeverity {

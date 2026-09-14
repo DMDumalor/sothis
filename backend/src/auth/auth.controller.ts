@@ -7,7 +7,6 @@ import {
   Ip,
   Post,
   Headers,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
@@ -16,6 +15,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { MfaChallengeDto } from './dto/mfa-challenge.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -46,7 +46,9 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Rotate a refresh token for a new access/refresh pair' })
+  @ApiOperation({
+    summary: 'Rotate a refresh token for a new access/refresh pair',
+  })
   refresh(
     @Body() dto: RefreshTokenDto,
     @Ip() ip: string,
@@ -67,9 +69,29 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('mfa/challenge')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Complete a login by verifying a TOTP or backup code',
+  })
+  mfaChallenge(
+    @Body() dto: MfaChallengeDto,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string,
+  ) {
+    return this.authService.completeMfaChallenge(dto, {
+      ipAddress: ip,
+      userAgent,
+    });
+  }
+
+  @Public()
   @Post('account-invitations/accept')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Activate an invited employee account and set a password' })
+  @ApiOperation({
+    summary: 'Activate an invited employee account and set a password',
+  })
   acceptInvitation(
     @Body() dto: AcceptInvitationDto,
     @Ip() ip: string,

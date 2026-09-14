@@ -26,6 +26,7 @@ import { IntelligenceModule } from './intelligence/intelligence.module';
 import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
 import { OrganizationModule } from './organization/organization.module';
+import { SettingsModule } from './settings/settings.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -71,6 +72,7 @@ import { AppService } from './app.service';
     UsersModule,
     RolesModule,
     OrganizationModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [

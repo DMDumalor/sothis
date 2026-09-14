@@ -8,9 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PERMISSIONS_KEY } from '../../common/decorators/permissions.decorator';
 import { PermissionCode } from '../../rbac/permissions.constants';
-import {
-  AuthenticatedRequest,
-} from '../../common/interfaces/authenticated-request.interface';
+import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 
 /**
  * Enforces the permission(s) declared via @RequirePermissions() against the

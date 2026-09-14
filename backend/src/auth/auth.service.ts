@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
+import { verify as verifyTotp } from 'otplib';
 import { randomBytes, createHash } from 'node:crypto';
 import {
   InvitationStatus,
@@ -25,6 +26,7 @@ import { MailService } from '../mail/mail.service';
 import { TokenService } from './token.service';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { MfaChallengeDto } from './dto/mfa-challenge.dto';
 
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -144,6 +146,22 @@ export class AuthService {
       throw new UnauthorizedException(this.GENERIC_LOGIN_ERROR);
     }
 
+    // Password is correct. If this account has MFA enabled, don't clear
+    // lockout counters or issue tokens yet — hand back a short-lived
+    // challenge token instead and require a verified TOTP/backup code
+    // before completing login (see completeMfaChallenge). No LoginAudit
+    // row is written for this intermediate step; the final SUCCESS row is
+    // written once the challenge actually passes, same as a normal login.
+    if (user.mfaEnabled) {
+      return {
+        mfaRequired: true as const,
+        mfaToken: this.tokens.signMfaChallenge({
+          userId: user.id,
+          tenantId: tenant.id,
+        }),
+      };
+    }
+
     // Success: atomically clear lockout counters and stamp lastLoginAt.
     await this.prisma.user.update({
       where: { id: user.id },
@@ -252,6 +270,126 @@ export class AuthService {
 
   async logout(refreshToken: string) {
     await this.tokens.revokeToken(refreshToken);
+  }
+
+  /**
+   * Completes the second step of a login for an MFA-enabled account.
+   * Accepts either a current TOTP code or one of the user's remaining
+   * one-time backup codes (consumed on use). On success this is exactly
+   * equivalent to a normal successful login — same token issuance, same
+   * lockout-counter reset, same LoginAudit SUCCESS row — just delayed
+   * until the second factor is verified.
+   */
+  async completeMfaChallenge(dto: MfaChallengeDto, meta: RequestMeta) {
+    const { userId, tenantId } = this.tokens.verifyMfaChallenge(dto.mfaToken);
+
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId },
+      include: {
+        tenant: true,
+        userRoles: { select: { role: { select: { code: true } } } },
+      },
+    });
+
+    if (!user || !user.mfaEnabled || !user.mfaSecret) {
+      throw new UnauthorizedException('Invalid authentication challenge.');
+    }
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('Account is not active');
+    }
+
+    const code = dto.code.trim();
+    let matchedBackupCodeHash: string | null = null;
+
+    // epochTolerance: 1 allows the code from one 30s step before/after
+    // "now", the standard authenticator-app tolerance for clock drift.
+    const totpResult = await verifyTotp({
+      secret: user.mfaSecret,
+      token: code,
+      epochTolerance: 1,
+    }).catch(() => ({ valid: false }));
+    const totpValid = totpResult.valid;
+    if (!totpValid) {
+      for (const hash of user.mfaBackupCodes) {
+        if (await argon2.verify(hash, code).catch(() => false)) {
+          matchedBackupCodeHash = hash;
+          break;
+        }
+      }
+    }
+
+    if (!totpValid && !matchedBackupCodeHash) {
+      await this.audit.recordSecurityEvent({
+        tenantId,
+        type: SecurityEventType.MFA_CHALLENGE_FAILED,
+        severity: SecuritySeverity.MEDIUM,
+        description:
+          'An incorrect two-factor authentication code was submitted.',
+        userId,
+        ipAddress: meta.ipAddress,
+      });
+      throw new UnauthorizedException('Invalid authentication code.');
+    }
+
+    const updateData: {
+      failedLoginAttempts: number;
+      lockedUntil: null;
+      lastLoginAt: Date;
+      mfaBackupCodes?: string[];
+    } = {
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      lastLoginAt: new Date(),
+    };
+    if (matchedBackupCodeHash) {
+      // One-time use: remove exactly the code that was just consumed.
+      updateData.mfaBackupCodes = user.mfaBackupCodes.filter(
+        (h) => h !== matchedBackupCodeHash,
+      );
+    }
+    await this.prisma.user.update({ where: { id: user.id }, data: updateData });
+
+    if (matchedBackupCodeHash) {
+      await this.audit.record({
+        tenantId,
+        actorUserId: user.id,
+        action: 'user.mfa_backup_code_used',
+        resourceType: 'User',
+        resourceId: user.id,
+        metadata: { remaining: updateData.mfaBackupCodes!.length },
+      });
+    }
+
+    await this.logLoginAttempt({
+      tenantId,
+      userId: user.id,
+      emailAttempt: user.email,
+      organizationCodeAttempt: user.tenant.code,
+      result: LoginAuditResult.SUCCESS,
+      meta,
+    });
+
+    const roles = user.userRoles.map((ur) => ur.role.code);
+    const issued = await this.tokens.issueTokenPair({
+      userId: user.id,
+      tenantId: user.tenantId,
+      email: user.email,
+      roles,
+      ipAddress: meta.ipAddress,
+      userAgent: meta.userAgent,
+      refreshTokenTtlDays: user.tenant.refreshTokenTtlDays,
+    });
+
+    return {
+      ...issued,
+      user: {
+        id: user.id,
+        email: user.email,
+        roles,
+        organizationCode: user.tenant.code,
+        organizationName: user.tenant.name,
+      },
+    };
   }
 
   // ---------------------------------------------------------------------

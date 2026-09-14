@@ -27,6 +27,20 @@ export interface LoginResponse {
   user: AuthUser;
 }
 
+/** Returned by POST /auth/login instead of LoginResponse when the account
+ * has MFA enabled — the password was correct, but the caller must still
+ * complete POST /auth/mfa/challenge with mfaToken + a TOTP/backup code
+ * before receiving real tokens. */
+export interface MfaRequiredResponse {
+  mfaRequired: true;
+  mfaToken: string;
+}
+
+export interface MfaChallengePayload {
+  mfaToken: string;
+  code: string;
+}
+
 export interface MeResponse {
   id: string;
   email: string;

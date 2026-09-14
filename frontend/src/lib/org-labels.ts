@@ -4,6 +4,7 @@ import type { PaymentMethod, PaymentStatus, PayrollStatus } from '@/types/payrol
 import type { InsightStatus, RiskLevel } from '@/types/intelligence';
 import type { SecuritySeverity } from '@/types/security';
 import type { InvitationStatus, LoginAuditResult, UserStatus } from '@/types/users';
+import type { NotificationCategory } from '@/types/notifications';
 
 export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   FULL_TIME: 'Full-time',
@@ -208,4 +209,15 @@ export const LOGIN_AUDIT_RESULT_TONE: Record<LoginAuditResult, 'success' | 'warn
   ACCOUNT_NOT_ACTIVATED: 'warning',
   TENANT_NOT_FOUND: 'neutral',
   REFRESH: 'neutral',
+};
+
+export const NOTIFICATION_CATEGORY_LABELS: Record<NotificationCategory, string> = {
+  DOCUMENT_EXPIRY: 'Document expiry',
+  LEAVE: 'Leave',
+  ATTENDANCE: 'Attendance',
+  OVERTIME: 'Overtime',
+  PAYROLL: 'Payroll',
+  SECURITY: 'Security',
+  WORKFORCE: 'Workforce',
+  SYSTEM: 'System',
 };

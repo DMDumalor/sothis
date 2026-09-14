@@ -23,6 +23,7 @@ import { IntelligencePage } from '@/pages/intelligence/IntelligencePage';
 import { UsersPage } from '@/pages/admin/UsersPage';
 import { RolesPermissionsPage } from '@/pages/admin/RolesPermissionsPage';
 import { OrganizationSettingsPage } from '@/pages/admin/OrganizationSettingsPage';
+import { SettingsPage } from '@/pages/settings/SettingsPage';
 
 function App() {
   useBootstrapAuth();
@@ -89,6 +90,14 @@ function App() {
             <Route path="/admin/users" element={<UsersPage />} />
             <Route path="/admin/roles" element={<RolesPermissionsPage />} />
             <Route path="/admin/organization" element={<OrganizationSettingsPage />} />
+
+            {/* Self-service account settings: SETTINGS_READ is granted OWN
+                scope to every role, so this route (unlike /admin/*) renders
+                identically regardless of role — password change, MFA
+                enrollment, session management, and notification
+                preferences, all scoped server-side to the caller's own
+                account. */}
+            <Route path="/settings" element={<SettingsPage />} />
 
             {/* Remaining feature routes (DG-specific executive dashboard
                 widgets beyond HomePage) are added milestone by milestone
